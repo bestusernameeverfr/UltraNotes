@@ -1,12 +1,13 @@
 {
   "name": "ultranotes",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "main.js",
-  "description": "UltraNotes App",
-  "author": "Jayden",
+  "description": "UltraNotes - modern notes app",
+  "author": "jayden pauldon",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --x64"
+    "build": "electron-builder",
+    "deploy": "node deploy.js"
   },
   "build": {
     "appId": "com.ultranotes.app",
@@ -14,15 +15,20 @@
     "win": {
       "target": "nsis"
     },
-    "publish": {
-      "provider": "github"
-    }
-  },
-  "devDependencies": {
-    "electron": "^42.0.0",
-    "electron-builder": "^24.13.3"
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "bestusernameeverfr",
+        "repo": "UltraNotes"
+      }
+    ]
   },
   "dependencies": {
     "electron-updater": "^6.0.0"
+  },
+  "devDependencies": {
+    "electron": "^42.0.1",
+    "electron-builder": "^24.13.3",
+    "fs-extra": "^11.2.0"
   }
 }
