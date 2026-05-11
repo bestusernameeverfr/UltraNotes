@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Ultra Notes</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-stroke: 0.4px rgba(0,0,0,0.25);
+}
+
+body{
+  margin:0;
+  overflow:hidden;
+  background:linear-gradient(135deg,#ff9a9e,#fad0c4);
+  transition:0.5s ease;
+  color:white;
+}
+
+#app{
+  height:100vh;
+  width:100vw;
+  position:relative;
+}
+
+#sidebar{
+  width:380px;
+  height:100vh;
+  position:absolute;
+  left:0;
+  top:0;
+  overflow-y:auto;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(18px);
+  border-right:1px solid rgba(255,255,255,0.2);
+  transition:0.3s;
+}
+
+#editor{
+  position:absolute;
+  inset:0;
+  padding:60px;
+  box-sizing:border-box;
+
+  opacity:0;
+  transform:scale(0.92);
+  pointer-events:none;
+
+  transition:0.35s ease;
+}
+
+.fullscreen #sidebar{
+  opacity:0;
+  transform:translateX(-30px);
+  pointer-events:none;
+}
+
+.fullscreen #editor{
+  opacity:1;
+  transform:scale(1);
+  pointer-events:auto;
+}
+
+.noteCard{
+  transition:0.2s;
+}
+
+.noteCard:hover{
+  transform:scale(1.02);
+}
+
+#saveStatus{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  background:rgba(255,255,255,0.2);
+  padding:10px 16px;
+  border-radius:999px;
+  opacity:0;
+  transition:0.3s;
+}
+
+#settingsPanel{
+  display:none;
+  margin-top:10px;
+}
+
+#settingsPanel.show{
+  display:block;
+}
+
+#settingsPanel button{
+  margin:5px;
+  padding:8px 12px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.25);
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+#settingsPanel button:hover{
+  transform:scale(1.05);
+}
+
+button{ transition:0.2s; }
+button:active{ transform:scale(0.96); }
+
+textarea,input{
+  outline:none;
+  background:transparent;
+  width:100%;
+  color:white;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+
+    <div class="p-6 border-b border-white/10 flex justify-between items-center">
+      <h1 class="text-4xl font-black">Ultra Notes ✨</h1>
+
+      <button onclick="toggleSettings()" class="p-3 rounded-xl bg-white/20">
+        ⚙️
+      </button>
+    </div>
+
+    <div id="settingsPanel" class="p-4 border-b border-white/10">
+      <button onclick="setTheme('pink')">💗 Pink</button>
+      <button onclick="setTheme('blue')">💙 Blue</button>
+      <button onclick="setTheme('sunset')">🌅 Sunset</button>
+      <button onclick="setTheme('peach')">🍑 Peach</button>
+      <button onclick="setTheme('candy')">🍬 Candy</button>
+    </div>
+
+    <div class="p-5">
+      <input id="search"
+        oninput="renderNotes()"
+        placeholder="Search notes..."
+        class="w-full p-4 rounded-3xl bg-white/20" />
+    </div>
+
+    <div class="p-5">
+      <button id="createBtn"
+        class="w-full bg-white text-pink-500 p-4 rounded-3xl font-black">
+        + Create New Note
+      </button>
+    </div>
+
+    <div id="notesContainer" class="p-5 space-y-4"></div>
+
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor">
+
+    <input id="title"
+      placeholder="Untitled Note"
+      class="text-6xl font-black mb-10"
+      oninput="autoSave()" />
+
+    <textarea id="content"
+      class="h-[75vh] text-2xl resize-none"
+      placeholder="Start writing..."
+      oninput="autoSave()"></textarea>
+
+  </div>
+
+</div>
+
+<div id="saveStatus"></div>
+
+<script>
+
+let notes = JSON.parse(localStorage.getItem("ultraNotes")) || [];
+let selectedNote = null;
+let saveTimeout;
+
+/* SETTINGS */
+function toggleSettings(){
+  document.getElementById("settingsPanel").classList.toggle("show");
+}
+
+function setTheme(type){
+
+  const themes = {
+    pink: "linear-gradient(135deg,#ff9a9e,#fad0c4)",
+    blue: "linear-gradient(135deg,#84fab0,#8fd3f4)",
+    sunset: "linear-gradient(135deg,#fbc2eb,#a6c1ee)",
+    peach: "linear-gradient(135deg,#ffecd2,#fcb69f)",
+    candy: "linear-gradient(135deg,#ffdde1,#ee9ca7)"
+  };
+
+  document.body.style.background = themes[type];
+}
+
+/* SAVE */
+function saveNotes(){
+  localStorage.setItem("ultraNotes", JSON.stringify(notes));
+}
+
+function showSave(msg){
+  const el = document.getElementById("saveStatus");
+  el.innerText = msg;
+  el.style.opacity = 1;
+  setTimeout(()=>el.style.opacity=0,800);
+}
+
+/* AUTO SAVE */
+function autoSave(){
+
+  showSave("Saving...");
+
+  clearTimeout(saveTimeout);
+
+  saveTimeout = setTimeout(()=>{
+
+    if(!selectedNote) return;
+
+    selectedNote.title = document.getElementById("title").value;
+    selectedNote.content = document.getElementById("content").value;
+    selectedNote.updatedAt = Date.now();
+
+    notes = notes.map(n =>
+      n.id === selectedNote.id ? selectedNote : n
+    );
+
+    saveNotes();
+    renderNotes();
+
+    showSave("Saved ✓");
+
+  },400);
+}
+
+/* CREATE */
+document.getElementById("createBtn").onclick = ()=>{
+  const note = {
+    id:Date.now(),
+    title:"",
+    content:"",
+    pinned:false,
+    updatedAt:Date.now()
+  };
+
+  notes.unshift(note);
+  saveNotes();
+  renderNotes();
+  openNote(note.id);
+};
+
+/* PIN */
+function togglePin(id,e){
+  e.stopPropagation();
+  const note = notes.find(n=>n.id===id);
+  note.pinned = !note.pinned;
+  saveNotes();
+  renderNotes();
+}
+
+/* 🆕 DELETE NOTE */
+function deleteNote(id, e){
+  e.stopPropagation();
+
+  notes = notes.filter(n => n.id !== id);
+
+  if(selectedNote && selectedNote.id === id){
+    selectedNote = null;
+    document.body.classList.remove("fullscreen");
+  }
+
+  saveNotes();
+  renderNotes();
+}
+
+/* RENDER */
+function renderNotes(){
+
+  const container = document.getElementById("notesContainer");
+  const query = document.getElementById("search").value.toLowerCase();
+
+  container.innerHTML = "";
+
+  let sorted = [...notes];
+
+  sorted.sort((a,b)=>{
+    if(a.pinned !== b.pinned){
+      return b.pinned - a.pinned;
+    }
+    return b.updatedAt - a.updatedAt;
+  });
+
+  sorted.forEach(note=>{
+
+    if(query && !note.title.toLowerCase().includes(query)) return;
+
+    const div = document.createElement("div");
+    div.className = "p-5 rounded-3xl bg-white/20 cursor-pointer noteCard";
+
+    div.innerHTML = `
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-black">
+          ${note.title || "Untitled Note"}
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="togglePin(${note.id}, event)">
+            ${note.pinned ? "📌" : "📍"}
+          </button>
+
+          <button onclick="deleteNote(${note.id}, event)">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `;
+
+    div.onclick = ()=>openNote(note.id);
+    container.appendChild(div);
+  });
+}
+
+/* OPEN */
+function openNote(id){
+
+  selectedNote = notes.find(n=>n.id===id);
+
+  document.body.classList.add("fullscreen");
+
+  document.getElementById("title").value = selectedNote.title;
+  document.getElementById("content").value = selectedNote.content;
+
+  document.getElementById("title").focus();
+}
+
+/* ESC */
+document.addEventListener("keydown",(e)=>{
+  if(e.key === "Escape"){
+    document.body.classList.remove("fullscreen");
+    selectedNote = null;
+    renderNotes();
+  }
+});
+
+renderNotes();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "ultranotes",
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "UltraNotes App",
+  "author": "Jayden",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.ultranotes.app",
+    "productName": "UltraNotes",
+    "win": {
+      "target": "nsis"
+    },
+    "publish": {
+      "provider": "github"
+    }
+  },
+  "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.0.0"
+  }
+}
